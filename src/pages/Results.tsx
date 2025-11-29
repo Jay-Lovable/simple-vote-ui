@@ -1,23 +1,56 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Users, Clock, RefreshCw, TrendingUp, Loader2 } from "lucide-react";
+import { BarChart3, Users, Clock, RefreshCw, TrendingUp, Loader2, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout/Layout";
 import ResultBar from "@/components/results/ResultBar";
-import { votingApi, type VoteResult } from "@/lib/api";
+import {
+  votingApi,
+  electionApi,
+  categoryApi,
+  type VoteResult,
+  type Election,
+  type Category,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const Results = () => {
   const [results, setResults] = useState<VoteResult[]>([]);
+  const [election, setElection] = useState<Election | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   const fetchResults = async (showRefreshState = false) => {
-    if (showRefreshState) setIsRefreshing(true);
-    
+    if (showRefreshState) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const data = await votingApi.getResults();
-      setResults(data);
+      const voteResults = await votingApi.getResults();
+      setResults(voteResults);
+
+      try {
+        const [electionsData, categoriesData] = await Promise.all([
+          electionApi.getElections(),
+          categoryApi.getCategories(),
+        ]);
+
+        setElection(electionsData[0] ?? null);
+        setCategories(categoriesData);
+      } catch (metadataError) {
+        console.error("Failed to load election metadata", metadataError);
+        toast({
+          title: "Election metadata unavailable",
+          description: "Results loaded, but election or category details could not be retrieved.",
+        });
+      }
+
+      setLastUpdatedAt(new Date().toISOString());
     } catch (error) {
       toast({
         title: "Error",
@@ -41,11 +74,24 @@ const Results = () => {
   const totalVotes = results.reduce((sum, candidate) => sum + candidate.votes, 0);
   const sortedResults = [...results].sort((a, b) => b.votes - a.votes);
   const winner = sortedResults[0];
+  const formattedLastUpdated = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleString()
+    : "-";
+  const formattedElectionDate = election?.date
+    ? new Date(election.date).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+  const electionSubtitle = election
+    ? election.description || `${election.name}${formattedElectionDate ? ` • ${formattedElectionDate}` : ""}`
+    : "Presidential Election 2024 - Live Results";
 
   const stats = [
     { label: "Total Votes", value: totalVotes.toLocaleString(), icon: Users },
     { label: "Leading", value: winner?.candidate_name || "-", icon: TrendingUp },
-    { label: "Last Updated", value: "Just now", icon: Clock },
+    { label: "Last Updated", value: formattedLastUpdated, icon: Clock },
   ];
 
   if (isLoading) {
@@ -68,8 +114,23 @@ const Results = () => {
                 Election Results
               </h1>
               <p className="mt-2 text-muted-foreground">
-                Presidential Election 2024 - Live Results
+                {electionSubtitle}
               </p>
+              {(formattedElectionDate || categories.length > 0) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {formattedElectionDate && (
+                    <Badge variant="outline" className="gap-1 text-muted-foreground">
+                      <CalendarDays className="h-3 w-3" />
+                      {formattedElectionDate}
+                    </Badge>
+                  )}
+                  {categories.map((category) => (
+                    <Badge key={category.id} variant="secondary">
+                      {category.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
             <Button
               variant="outline"

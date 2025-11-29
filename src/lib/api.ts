@@ -3,11 +3,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api"
 
 // Types
 export interface Candidate {
-  id: string;
+  id: number;
   name: string;
-  party: string;
-  image?: string;
-  description?: string;
+  manifesto?: string;
+  category: number;
 }
 
 export interface VoteResult {
@@ -37,6 +36,22 @@ export interface VoteReceipt {
   receipt_id: string;
   candidate_name: string;
   timestamp: string;
+}
+
+export interface Election {
+  id: number;
+  title: string;
+  description?: string;
+  is_public: boolean;
+  allowed_voters: any[];
+  categories: any[];
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  election: number;
 }
 
 // Helper function for API calls
@@ -85,16 +100,38 @@ export const authApi = {
 // Voting API
 export const votingApi = {
   getCandidates: () =>
-    apiRequest<Candidate[]>("/candidates/"),
+    apiRequest<Candidate[]>("/candidate/"),
 
-  submitVote: (candidateId: string) =>
+  submitVote: (electionId: number, categoryId: number, candidateId: number) =>
     apiRequest<VoteReceipt>("/vote/", {
       method: "POST",
-      body: JSON.stringify({ candidate_id: candidateId }),
+      body: JSON.stringify({
+        election_id: electionId,
+        category_id: categoryId,
+        candidate_id: candidateId
+      }),
     }),
 
   getResults: () =>
-    apiRequest<VoteResult[]>("/results/"),
+    apiRequest<VoteResult[]>("/result/"),
+};
+
+// Election API
+export const electionApi = {
+  getElections: () =>
+    apiRequest<Election[]>("/election/"),
+};
+
+// Candidate API (separate from voting candidates if needed)
+export const candidateApi = {
+  getCandidates: () =>
+    apiRequest<Candidate[]>("/candidate/"),
+};
+
+// Category API
+export const categoryApi = {
+  getCategories: () =>
+    apiRequest<Category[]>("/category/"),
 };
 
 // Auth helpers
