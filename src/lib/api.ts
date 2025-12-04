@@ -246,7 +246,12 @@ export const adminApi = {
     }),
 
   deleteCandidate: (id: number) =>
-    apiRequest<void>(`/admin/candidate/${id}/`, {
+    apiRequest<void>(`/candidate/${id}/`, {
+      method: "DELETE",
+    }),
+
+  deleteElection: (id: number) =>
+    apiRequest<void>(`/election/${id}/`, {
       method: "DELETE",
     }),
 
