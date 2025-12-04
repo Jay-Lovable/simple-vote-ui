@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Users, Clock, RefreshCw, TrendingUp, Loader2, CalendarDays } from "lucide-react";
+import { BarChart3, Users, Clock, RefreshCw, Loader2, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,27 +41,20 @@ const Results = () => {
       ]);
       setElections(electionsData);
       setCategories(categoriesData);
-
-      // Auto-select first election with released results, or first election
-      const releasedElection = electionsData.find((e) => e.results_released);
-      const firstElection = releasedElection || electionsData[0];
-      if (firstElection) {
-        setSelectedElectionId(firstElection.id);
-      }
+      setIsLoading(false);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load elections",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
   };
 
   const fetchResults = async (electionId: number, showRefreshState = false) => {
     if (showRefreshState) {
       setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
     }
 
     try {
@@ -75,7 +68,6 @@ const Results = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
       setIsRefreshing(false);
     }
   };
@@ -87,6 +79,8 @@ const Results = () => {
   useEffect(() => {
     if (selectedElectionId) {
       fetchResults(selectedElectionId);
+    } else {
+      setResults([]);
     }
   }, [selectedElectionId]);
 
@@ -100,9 +94,26 @@ const Results = () => {
     setSelectedElectionId(Number(value));
   };
 
-  const totalVotes = results.reduce((sum, candidate) => sum + candidate.votes, 0);
-  const sortedResults = [...results].sort((a, b) => b.votes - a.votes);
-  const winner = sortedResults[0];
+  // Get categories for selected election
+  const electionCategories = categories.filter(
+    (c) => c.election === selectedElectionId
+  );
+
+  // Group results by category
+  const resultsByCategory = electionCategories.map((category) => {
+    const categoryResults = results.filter((r) => r.category_id === category.id);
+    const categoryTotalVotes = categoryResults.reduce((sum, c) => sum + c.votes, 0);
+    const sortedResults = [...categoryResults].sort((a, b) => b.votes - a.votes);
+    const winner = sortedResults[0];
+    return {
+      category,
+      results: sortedResults,
+      totalVotes: categoryTotalVotes,
+      winner,
+    };
+  });
+
+  const totalVotes = results.reduce((sum, c) => sum + c.votes, 0);
   const formattedLastUpdated = lastUpdatedAt
     ? new Date(lastUpdatedAt).toLocaleString()
     : "-";
@@ -114,17 +125,7 @@ const Results = () => {
       })
     : null;
 
-  const electionCategories = categories.filter(
-    (c) => c.election === selectedElectionId
-  );
-
-  const stats = [
-    { label: "Total Votes", value: totalVotes.toLocaleString(), icon: Users },
-    { label: "Leading", value: winner?.candidate_name || "-", icon: TrendingUp },
-    { label: "Last Updated", value: formattedLastUpdated, icon: Clock },
-  ];
-
-  if (isLoading && elections.length === 0) {
+  if (isLoading) {
     return (
       <Layout>
         <div className="container py-20 flex justify-center">
@@ -180,96 +181,126 @@ const Results = () => {
                 </SelectContent>
               </Select>
 
-              {(formattedElectionDate || electionCategories.length > 0) && (
-                <div className="flex flex-wrap gap-2">
-                  {formattedElectionDate && (
-                    <Badge variant="outline" className="gap-1 text-muted-foreground">
-                      <CalendarDays className="h-3 w-3" />
-                      {formattedElectionDate}
-                    </Badge>
-                  )}
-                  {electionCategories.map((category) => (
-                    <Badge key={category.id} variant="secondary">
-                      {category.name}
-                    </Badge>
-                  ))}
-                </div>
+              {selectedElection && formattedElectionDate && (
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                  <CalendarDays className="h-3 w-3" />
+                  {formattedElectionDate}
+                </Badge>
               )}
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
-            {stats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className="rounded-xl border border-border bg-card p-4 shadow-soft animate-slide-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <stat.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="font-semibold text-foreground">{stat.value}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Results Chart */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
-            <div className="mb-6 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold text-foreground">
-                Vote Distribution
+          {/* Show message if no election selected */}
+          {!selectedElectionId && (
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                Select an Election
               </h2>
-            </div>
-
-            {results.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No results available yet.
+              <p className="text-muted-foreground">
+                Choose an election from the dropdown above to view its results.
               </p>
-            ) : (
-              <div className="space-y-4">
-                {sortedResults.map((candidate, index) => (
-                  <div
-                    key={candidate.candidate_id}
-                    className="animate-slide-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <ResultBar
-                      name={candidate.candidate_name}
-                      party={candidate.party}
-                      votes={candidate.votes}
-                      totalVotes={totalVotes}
-                      isWinner={candidate.candidate_id === winner?.candidate_id}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
+          )}
 
-            {totalVotes > 0 && (
-              <div className="mt-8 rounded-lg bg-secondary p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Votes Cast</span>
-                  <span className="font-semibold text-foreground">
-                    {totalVotes.toLocaleString()}
-                  </span>
+          {/* Results by Category */}
+          {selectedElectionId && (
+            <>
+              {/* Stats Cards */}
+              <div className="mb-8 grid gap-4 md:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-soft animate-slide-up">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Votes</p>
+                      <p className="font-semibold text-foreground">{totalVotes.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 shadow-soft animate-slide-up" style={{ animationDelay: '100ms' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Categories</p>
+                      <p className="font-semibold text-foreground">{electionCategories.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 shadow-soft animate-slide-up" style={{ animationDelay: '200ms' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Last Updated</p>
+                      <p className="font-semibold text-foreground text-xs">{formattedLastUpdated}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="mt-8 rounded-lg bg-primary/10 p-4 text-center text-sm text-muted-foreground">
-            <p>
-              Results are updated in real-time as votes are counted and verified. 
-              Final results will be certified after the election closes.
-            </p>
-          </div>
+              {resultsByCategory.length === 0 ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center">
+                  <p className="text-muted-foreground">
+                    No categories found for this election.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {resultsByCategory.map(({ category, results: categoryResults, totalVotes: categoryTotal, winner }) => (
+                    <div key={category.id} className="rounded-xl border border-border bg-card p-6 shadow-soft">
+                      <div className="mb-6 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                          <h2 className="text-xl font-semibold text-foreground">
+                            {category.name}
+                          </h2>
+                        </div>
+                        <Badge variant="secondary">
+                          {categoryTotal.toLocaleString()} votes
+                        </Badge>
+                      </div>
+
+                      {categoryResults.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-4">
+                          No results available for this category.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {categoryResults.map((candidate, index) => (
+                            <div
+                              key={candidate.candidate_id}
+                              className="animate-slide-up"
+                              style={{ animationDelay: `${index * 100}ms` }}
+                            >
+                              <ResultBar
+                                name={candidate.candidate_name}
+                                party={candidate.party}
+                                votes={candidate.votes}
+                                totalVotes={categoryTotal}
+                                isWinner={candidate.candidate_id === winner?.candidate_id}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-8 rounded-lg bg-primary/10 p-4 text-center text-sm text-muted-foreground">
+                <p>
+                  Results are updated in real-time as votes are counted and verified. 
+                  Final results will be certified after the election closes.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Layout>

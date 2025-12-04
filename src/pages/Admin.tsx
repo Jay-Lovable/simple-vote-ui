@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Play, StopCircle, Eye, Loader2, Upload } from "lucide-react";
+import { Plus, Trash2, Play, StopCircle, Eye, Loader2, Upload, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Tabs,
   TabsContent,
@@ -52,24 +62,27 @@ const Admin = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Dialog states
   const [showElectionDialog, setShowElectionDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
-  const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  
+  // Edit states
+  const [editingElection, setEditingElection] = useState<Election | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
+  
+  // Delete confirmation states
+  const [deleteElectionId, setDeleteElectionId] = useState<number | null>(null);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<number | null>(null);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<number | null>(null);
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // if (!user?.email?.includes('@admin')) {
-    //   toast({
-    //     title: "Access Denied",
-    //     description: "You do not have admin privileges",
-    //     variant: "destructive",
-    //   });
-    //   navigate("/");
-    //   return;
-    // }
     fetchData();
   }, [user, navigate]);
 
@@ -95,6 +108,7 @@ const Admin = () => {
     }
   };
 
+  // Election handlers
   const handleCreateElection = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -110,10 +124,7 @@ const Admin = () => {
         results_released: false,
       });
       
-      toast({
-        title: "Success",
-        description: "Election created successfully",
-      });
+      toast({ title: "Success", description: "Election created successfully" });
       setShowElectionDialog(false);
       fetchData();
     } catch (error) {
@@ -125,6 +136,48 @@ const Admin = () => {
     }
   };
 
+  const handleUpdateElection = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingElection) return;
+    
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      await adminApi.updateElection(editingElection.id, {
+        title: formData.get('title') as string,
+        description: formData.get('description') as string,
+      });
+      
+      toast({ title: "Success", description: "Election updated successfully" });
+      setEditingElection(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update election",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteElection = async () => {
+    if (!deleteElectionId) return;
+    
+    try {
+      await adminApi.deleteElection(deleteElectionId);
+      toast({ title: "Success", description: "Election deleted successfully" });
+      setDeleteElectionId(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete election",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Category handlers
   const handleCreateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -136,10 +189,7 @@ const Admin = () => {
         election: parseInt(formData.get('election') as string),
       });
       
-      toast({
-        title: "Success",
-        description: "Category created successfully",
-      });
+      toast({ title: "Success", description: "Category created successfully" });
       setShowCategoryDialog(false);
       fetchData();
     } catch (error) {
@@ -151,6 +201,48 @@ const Admin = () => {
     }
   };
 
+  const handleUpdateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      await categoryApi.updateCategory(editingCategory.id, {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+      });
+      
+      toast({ title: "Success", description: "Category updated successfully" });
+      setEditingCategory(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update category",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryId) return;
+    
+    try {
+      await categoryApi.deleteCategory(deleteCategoryId);
+      toast({ title: "Success", description: "Category deleted successfully" });
+      setDeleteCategoryId(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete category",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Candidate handlers
   const handleCreateCandidate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -168,10 +260,7 @@ const Admin = () => {
         await adminApi.uploadCandidateImage(candidate.id, imageFile);
       }
       
-      toast({
-        title: "Success",
-        description: "Candidate created successfully",
-      });
+      toast({ title: "Success", description: "Candidate created successfully" });
       setShowCandidateDialog(false);
       fetchData();
     } catch (error) {
@@ -183,13 +272,58 @@ const Admin = () => {
     }
   };
 
+  const handleUpdateCandidate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCandidate) return;
+    
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      await adminApi.updateCandidate(editingCandidate.id, {
+        name: formData.get('name') as string,
+        bio: formData.get('bio') as string,
+        manifesto: formData.get('manifesto') as string,
+      });
+
+      const imageFile = formData.get('image') as File;
+      if (imageFile && imageFile.size > 0) {
+        await adminApi.uploadCandidateImage(editingCandidate.id, imageFile);
+      }
+      
+      toast({ title: "Success", description: "Candidate updated successfully" });
+      setEditingCandidate(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update candidate",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!deleteCandidateId) return;
+    
+    try {
+      await adminApi.deleteCandidate(deleteCandidateId);
+      toast({ title: "Success", description: "Candidate deleted successfully" });
+      setDeleteCandidateId(null);
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete candidate",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Election lifecycle handlers
   const handleStartElection = async (electionId: number) => {
     try {
       await adminApi.startElection(electionId);
-      toast({
-        title: "Success",
-        description: "Election started successfully",
-      });
+      toast({ title: "Success", description: "Election started successfully" });
       fetchData();
     } catch (error) {
       toast({
@@ -203,10 +337,7 @@ const Admin = () => {
   const handleEndElection = async (electionId: number) => {
     try {
       await adminApi.endElection(electionId);
-      toast({
-        title: "Success",
-        description: "Election ended successfully",
-      });
+      toast({ title: "Success", description: "Election ended successfully" });
       fetchData();
     } catch (error) {
       toast({
@@ -220,10 +351,7 @@ const Admin = () => {
   const handleReleaseResults = async (electionId: number) => {
     try {
       await adminApi.releaseResults(electionId);
-      toast({
-        title: "Success",
-        description: "Results released successfully",
-      });
+      toast({ title: "Success", description: "Results released successfully" });
       fetchData();
     } catch (error) {
       toast({
@@ -279,45 +407,42 @@ const Admin = () => {
                     <CardDescription>{election.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Badge variant={
-                      election.status === 'active' ? 'default' :
-                      election.status === 'ended' ? 'secondary' : 'outline'
-                    }>
-                      {election.status}
-                    </Badge>
-                    {election.results_released && (
-                      <Badge variant="default">Results Released</Badge>
-                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge variant={
+                        election.status === 'active' ? 'default' :
+                        election.status === 'ended' ? 'secondary' : 'outline'
+                      }>
+                        {election.status}
+                      </Badge>
+                      {election.results_released && (
+                        <Badge variant="default">Results Released</Badge>
+                      )}
+                    </div>
                     <div className="flex gap-2 flex-wrap">
                       {election.status === 'draft' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartElection(election.id)}
-                        >
+                        <Button size="sm" onClick={() => handleStartElection(election.id)}>
                           <Play className="h-3 w-3 mr-1" />
                           Start
                         </Button>
                       )}
                       {election.status === 'active' && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleEndElection(election.id)}
-                        >
+                        <Button size="sm" variant="destructive" onClick={() => handleEndElection(election.id)}>
                           <StopCircle className="h-3 w-3 mr-1" />
                           End
                         </Button>
                       )}
                       {election.status === 'ended' && !election.results_released && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleReleaseResults(election.id)}
-                        >
+                        <Button size="sm" variant="secondary" onClick={() => handleReleaseResults(election.id)}>
                           <Eye className="h-3 w-3 mr-1" />
                           Release Results
                         </Button>
                       )}
+                      <Button size="sm" variant="outline" onClick={() => setEditingElection(election)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setDeleteElectionId(election.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -344,8 +469,16 @@ const Admin = () => {
                       <CardTitle>{category.name}</CardTitle>
                       <CardDescription>{category.description}</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-3">
                       <Badge variant="outline">{election?.title}</Badge>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setEditingCategory(category)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setDeleteCategoryId(category.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -374,7 +507,7 @@ const Admin = () => {
                         {candidate.bio}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-3">
                       {candidate.image && (
                         <img
                           src={candidate.image}
@@ -383,6 +516,14 @@ const Admin = () => {
                         />
                       )}
                       <Badge variant="secondary">{category?.name}</Badge>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setEditingCandidate(candidate)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setDeleteCandidateId(candidate.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -397,9 +538,7 @@ const Admin = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Election</DialogTitle>
-            <DialogDescription>
-              Set up a new election with title and description
-            </DialogDescription>
+            <DialogDescription>Set up a new election</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateElection}>
             <div className="space-y-4">
@@ -419,14 +558,37 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Election Dialog */}
+      <Dialog open={!!editingElection} onOpenChange={() => setEditingElection(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Election</DialogTitle>
+            <DialogDescription>Update election details</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateElection}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input id="edit-title" name="title" defaultValue={editingElection?.title} required />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea id="edit-description" name="description" defaultValue={editingElection?.description} />
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button type="submit">Update</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Category Dialog */}
       <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Category</DialogTitle>
-            <DialogDescription>
-              Add a category to an election
-            </DialogDescription>
+            <DialogDescription>Add a category to an election</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateCategory}>
             <div className="space-y-4">
@@ -461,14 +623,37 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Category Dialog */}
+      <Dialog open={!!editingCategory} onOpenChange={() => setEditingCategory(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+            <DialogDescription>Update category details</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateCategory}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-category-name">Name</Label>
+                <Input id="edit-category-name" name="name" defaultValue={editingCategory?.name} required />
+              </div>
+              <div>
+                <Label htmlFor="edit-category-description">Description</Label>
+                <Textarea id="edit-category-description" name="description" defaultValue={editingCategory?.description} />
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button type="submit">Update</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Candidate Dialog */}
       <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Candidate</DialogTitle>
-            <DialogDescription>
-              Create a candidate profile with details
-            </DialogDescription>
+            <DialogDescription>Create a candidate profile</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateCandidate}>
             <div className="space-y-4">
@@ -510,6 +695,87 @@ const Admin = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Candidate Dialog */}
+      <Dialog open={!!editingCandidate} onOpenChange={() => setEditingCandidate(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Candidate</DialogTitle>
+            <DialogDescription>Update candidate details</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateCandidate}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-candidate-name">Name</Label>
+                <Input id="edit-candidate-name" name="name" defaultValue={editingCandidate?.name} required />
+              </div>
+              <div>
+                <Label htmlFor="edit-candidate-bio">Bio</Label>
+                <Textarea id="edit-candidate-bio" name="bio" defaultValue={editingCandidate?.bio} required />
+              </div>
+              <div>
+                <Label htmlFor="edit-candidate-manifesto">Manifesto</Label>
+                <Textarea id="edit-candidate-manifesto" name="manifesto" defaultValue={editingCandidate?.manifesto} />
+              </div>
+              <div>
+                <Label htmlFor="edit-candidate-image">Image (optional, leave empty to keep current)</Label>
+                <Input id="edit-candidate-image" name="image" type="file" accept="image/*" />
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button type="submit">Update</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Election Confirmation */}
+      <AlertDialog open={!!deleteElectionId} onOpenChange={() => setDeleteElectionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Election?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the election and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteElection}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Category Confirmation */}
+      <AlertDialog open={!!deleteCategoryId} onOpenChange={() => setDeleteCategoryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the category and all associated candidates. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCategory}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Candidate Confirmation */}
+      <AlertDialog open={!!deleteCandidateId} onOpenChange={() => setDeleteCandidateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Candidate?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this candidate. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCandidate}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
