@@ -181,17 +181,32 @@ export const categoryApi = {
 
 // Admin API
 export const adminApi = {
-  createElection: (data: Omit<Election, 'id'>) =>
-    apiRequest<Election>("/admin/election/", {
+  // createElection: (data: Omit<Election, 'id'>) =>
+  //   apiRequest<Election>("/admin/election/", {
+  //     method: "POST",
+  //     body: JSON.stringify(data),
+  //   }),
+
+   createElection: (data: Omit<Election, 'id'>) =>
+    apiRequest<Election>("/election/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  updateElection: (id: number, data: Partial<Election>) =>
+  
+  // updateElection: (id: number, data: Partial<Election>) =>
+  //   apiRequest<Election>(`/admin/election/${id}/`, {
+  //     method: "PATCH",
+  //     body: JSON.stringify(data),
+  //   }),
+
+
+    updateElection: (id: number, data: Partial<Election>) =>
     apiRequest<Election>(`/admin/election/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+  
 
   startElection: (id: number) =>
     apiRequest<Election>(`/admin/election/${id}/start/`, {
@@ -208,11 +223,19 @@ export const adminApi = {
       method: "POST",
     }),
 
-  createCandidate: (data: Omit<Candidate, 'id'>) =>
-    apiRequest<Candidate>("/admin/candidate/", {
+  // createCandidate: (data: Omit<Candidate, 'id'>) =>
+  //   apiRequest<Candidate>("/admin/candidate/", {
+  //     method: "POST",
+  //     body: JSON.stringify(data),
+  //   }),
+
+
+    createCandidate: (data: Omit<Candidate, 'id'>) =>
+    apiRequest<Candidate>("/candidate/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
 
   updateCandidate: (id: number, data: Partial<Candidate>) =>
     apiRequest<Candidate>(`/admin/candidate/${id}/`, {

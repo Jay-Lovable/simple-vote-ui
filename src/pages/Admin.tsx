@@ -61,15 +61,15 @@ const Admin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user?.email?.includes('@admin')) {
-      toast({
-        title: "Access Denied",
-        description: "You do not have admin privileges",
-        variant: "destructive",
-      });
-      navigate("/");
-      return;
-    }
+    // if (!user?.email?.includes('@admin')) {
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "You do not have admin privileges",
+    //     variant: "destructive",
+    //   });
+    //   navigate("/");
+    //   return;
+    // }
     fetchData();
   }, [user, navigate]);
 
