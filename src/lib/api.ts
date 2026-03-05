@@ -1,3 +1,5 @@
+import { LogOut } from "lucide-react";
+
 // Configure your Django backend URL here
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -137,10 +139,15 @@ export const authApi = {
       body: JSON.stringify(credentials),
     }),
 
-  logout: () =>
-    apiRequest<void>("/auth/logout/", {
-      method: "POST",
-    }),
+  // logout: () =>
+  //   apiRequest<void>("/auth/logout/", {
+  //     method: "POST",
+  //   }),
+
+  logout: () => {
+  removeAuthToken();
+  return Promise.resolve();
+},
 
   getUser: () =>
     apiRequest<AuthResponse["user"]>("/auth/user/"),
@@ -259,7 +266,7 @@ export const adminApi = {
   //     body: JSON.stringify(data),
   //   }),
 
-
+/*
     createCandidate: (data: Omit<Candidate, 'id'>) =>
     apiRequest<Candidate>("/candidate/", {
       method: "POST",
@@ -273,6 +280,47 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
 
+    */
+
+  createCandidate: (data: Omit<Candidate, 'id'>) => {
+  const formData = new FormData();
+  formData.append('name', data.name);
+  formData.append('manifesto', data.manifesto ?? '');
+  formData.append('category', String(data.category));
+
+  const token = localStorage.getItem('auth_token');
+  return fetch(`${API_BASE_URL}/candidate/`, {
+    method: 'POST',
+    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) throw new Error('Failed to create candidate');
+    return res.json();
+  });
+},
+
+
+updateCandidate: (id: number, data: Partial<Candidate>) => {
+  const formData = new FormData();
+  if (data.name) formData.append('name', data.name);
+  if (data.manifesto) formData.append('manifesto', data.manifesto);
+  if (data.category) formData.append('category', String(data.category));
+
+  const token = localStorage.getItem('auth_token');
+  return fetch(`${API_BASE_URL}/candidate/${id}/`, {
+    method: 'PATCH',
+    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) throw new Error('Failed to update candidate');
+    return res.json();
+  });
+},
+
+
+
+  
+
   deleteCandidate: (id: number) =>
     apiRequest<void>(`/candidate/${id}/`, {
       method: "DELETE",
@@ -283,12 +331,14 @@ export const adminApi = {
       method: "DELETE",
     }),
 
+
+/*
   uploadCandidateImage: (id: number, file: File) => {
     const formData = new FormData();
     formData.append('image', file);
     // const token = localStorage.getItem("auth_token");
     
-    return fetch(`${API_BASE_URL}/admin/candidate/${id}/upload-image/`, {
+    return fetch(`${API_BASE_URL}/admin/candidate/${id}/election_images/`, {
       method: "POST",
       // headers: {
       //   ...(token && { Authorization: `Bearer ${token}` }),
@@ -301,7 +351,23 @@ export const adminApi = {
       }
       return response.json();
     });
-  },
+  },*/
+
+  uploadCandidateImage: (id: number, file: File) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const token = localStorage.getItem('auth_token');
+
+  return fetch(`${API_BASE_URL}/candidate/${id}/upload-image/`, {
+    method: 'POST',
+    headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) throw new Error('Upload failed');
+    return res.json();
+  });
+},
+  
 };
 
 // Auth helpers
