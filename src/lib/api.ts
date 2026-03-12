@@ -1,7 +1,8 @@
 import { LogOut } from "lucide-react";
 
 // Configure your Django backend URL here
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+// const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://capstone-ejl1.onrender.com/api";
 
 // Types
 export interface Candidate {
